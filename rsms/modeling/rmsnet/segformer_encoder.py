@@ -5,11 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from functools import partial
 
-from timm.models.layers import DropPath, to_2tuple, trunc_normal_
-from timm.models.registry import register_model
+from timm.layers import DropPath, to_2tuple, trunc_normal_
+from timm.models import register_model
 from timm.models.vision_transformer import _cfg
 import math
 import numpy as np
+
+from rsms import conf
 
 
 class Mlp(nn.Module):
@@ -201,9 +203,9 @@ class MixVisionTransformer(nn.Module):
                  attn_drop_rate=0., drop_path_rate=0., norm_layer=nn.LayerNorm,
                  depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1]):
         super().__init__()
-        
+
         use_pretrain = True
-        
+
         self.num_classes = num_classes
         self.depths = depths
 
@@ -255,11 +257,11 @@ class MixVisionTransformer(nn.Module):
         # self.head = nn.Linear(embed_dims[3], num_classes) if num_classes > 0 else nn.Identity()
 
         self.apply(self._init_weights)
-        
+
         if use_pretrain:
             self._load_pretrained_model()
-        
-        
+
+
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
             trunc_normal_(m.weight, std=.02)
@@ -323,11 +325,10 @@ class MixVisionTransformer(nn.Module):
         self.load_state_dict(state_dict)
         print('loading completed')
         """
-        
+
     # for ImageNet pre-trained weights
     def _load_pretrained_model(self):
-        path = 'weights/init/'
-        pretrain_dict = torch.load( path + 'mit_b2.pth') # changeable
+        pretrain_dict = torch.load( conf.WEIGHTS_DIR / 'init/mit_b2.pth') # changeable
         pretrain_dict = pretrain_dict
         model_dict = {}
         state_dict = self.state_dict()
@@ -409,15 +410,12 @@ class DWConv(nn.Module):
         return x
 
 
-
-
 class mit_b0(MixVisionTransformer):
     def __init__(self, **kwargs):
         super(mit_b0, self).__init__(
             patch_size=4, embed_dims=[32, 64, 160, 256], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[2, 2, 2, 2], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
-
 
 
 class mit_b1(MixVisionTransformer):
@@ -428,14 +426,12 @@ class mit_b1(MixVisionTransformer):
             drop_rate=0.0, drop_path_rate=0.1)
 
 
-
 class mit_b2(MixVisionTransformer):
     def __init__(self, **kwargs):
         super(mit_b2, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 4, 6, 3], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
-
 
 
 class mit_b3(MixVisionTransformer):
@@ -446,14 +442,12 @@ class mit_b3(MixVisionTransformer):
             drop_rate=0.0, drop_path_rate=0.1)
 
 
-
 class mit_b4(MixVisionTransformer):
     def __init__(self, **kwargs):
         super(mit_b4, self).__init__(
             patch_size=4, embed_dims=[64, 128, 320, 512], num_heads=[1, 2, 5, 8], mlp_ratios=[4, 4, 4, 4],
             qkv_bias=True, norm_layer=partial(nn.LayerNorm, eps=1e-6), depths=[3, 8, 27, 3], sr_ratios=[8, 4, 2, 1],
             drop_rate=0.0, drop_path_rate=0.1)
-
 
 
 class mit_b5(MixVisionTransformer):

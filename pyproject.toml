@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["rsms"]
+
+[project]
+dynamic = ["version"]
+name = "rsms"
+dependencies = [
+    "torch",
+    "torchvision",
+    "opencv_contrib_python",
+    "tqdm",
+    "einops",
+    "timm",
+    "matplotlib",
+    "tensorboardx",
+    "huggingface_hub",
+    "transformers",
+    "Pillow",
+    "requests",
+    "ipywidgets",
+]

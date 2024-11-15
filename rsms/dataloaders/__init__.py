@@ -1,6 +1,6 @@
-from dataloaders.datasets import kitti_advanced
 from torch.utils.data import DataLoader
 import torch
+from rsms.dataloaders.datasets import kitti_advanced
 
 def make_data_loader(args, **kwargs):
     if args.dataset == 'kitti_advanced':

@@ -17,6 +17,8 @@ from utils.saver import Saver
 from utils.summaries import TensorboardSummary
 from utils.metrics import Evaluator
 
+from rsms import conf
+
 
 ###########
 #######
@@ -47,7 +49,7 @@ class TrainerAdv(object):
         # Define Tensorboard Summary
         self.summary = TensorboardSummary(self.saver.experiment_dir)
         self.writer = self.summary.create_summary()
-        
+
         # Define Dataloader
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, self.val_loader, self.test_loader, self.nclass = make_data_loader(args, **kwargs)
@@ -60,26 +62,26 @@ class TrainerAdv(object):
                         freeze_bn=args.freeze_bn)
 
         ### define a save path
-        self.save_path = ''
-        
+        self.save_path = conf.WEIGHTS_DIR / "rmsnet"
+
         train_params = [{'params': model.backbone.parameters(), 'lr': args.lr},
                         {'params': model.decoder.parameters(), 'lr': args.lr * 10}]
-        
+
         optimizer = torch.optim.AdamW(train_params, betas=(0.9, 0.999), weight_decay=0.01)
 
 
         iter_per_epoch = len(self.train_loader)
-        
+
         # use class balanced weights (fixed)
         weight = calculate_weigths_labels(args.dataset, self.train_loader, self.nclass)
         weight = torch.from_numpy(weight.astype(np.float32))
-        
+
         # Define Criterion
         self.criterion = SegmentationLosses(weight=weight, cuda=args.cuda).build_loss(mode=args.loss_type)
         self.model, self.optimizer = model, optimizer
-        
+
         self.weight = weight
-        
+
         # Define Evaluator
         self.evaluator = Evaluator(self.nclass)
         # Define lr scheduler
@@ -93,13 +95,13 @@ class TrainerAdv(object):
             patch_replication_callback(self.model)
             self.model = self.model.cuda()
             self.model.to(device)
-            
+
         ### reload param and optimizer
-        train_params = [{'params': self.model.module.backbone.parameters(), 'lr': args.lr},
-                        {'params': self.model.module.decoder.parameters(), 'lr': args.lr * 10}]
-        
+        train_params = [{'params': self.model.backbone.parameters(), 'lr': args.lr},
+                        {'params': self.model.decoder.parameters(), 'lr': args.lr * 10}]
+
         self.optimizer = torch.optim.AdamW(train_params, betas=(0.9, 0.999), weight_decay=0.01)
-        
+
         self.scheduler = LR_Scheduler(args.lr_scheduler, args.lr,
                                             args.epochs, len(self.train_loader), warmup_epochs=self.warm)
 
@@ -111,7 +113,7 @@ class TrainerAdv(object):
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             if args.cuda:
-                self.model.module.load_state_dict(checkpoint['state_dict'])
+                self.model.load_state_dict(checkpoint['state_dict'])
             else:
                 self.model.load_state_dict(checkpoint['state_dict'])
             if not args.ft:
@@ -123,14 +125,14 @@ class TrainerAdv(object):
         # Clear start epoch if fine-tuning
         if args.ft:
             args.start_epoch = 0
-        
+
         # re-load self.args, in case args changed in above sections
         self.args = args
 
     def training(self, epoch):
         train_loss = 0.0
         self.model.train()
-        
+
         # train loader re-creation with each epoch (to shuffle the train data)
         kwargs = {'num_workers': args.workers, 'pin_memory': True}
         self.train_loader, _, _, _ = make_data_loader(self.args, **kwargs)
@@ -140,10 +142,10 @@ class TrainerAdv(object):
         for i, sample in enumerate(tbar):
             ### training
             image_cat, target, mask = sample['image_cat'], sample['label'], sample['mask']
-            
+
             if self.args.cuda:
                 image_cat, target, mask = image_cat.cuda(), target.cuda(), mask.cuda()
-            
+
             self.scheduler(self.optimizer, i, epoch, self.best_pred)
             self.optimizer.zero_grad()
             output = self.model(image_cat)
@@ -172,7 +174,7 @@ class TrainerAdv(object):
             is_best = False
             #self.saver.save_checkpoint({
             #    'epoch': epoch + 1,
-            #    'state_dict': self.model.module.state_dict(),
+            #    'state_dict': self.model.state_dict(),
             #    'optimizer': self.optimizer.state_dict(),
             #    'best_pred': self.best_pred,
             #}, is_best)
@@ -219,23 +221,23 @@ class TrainerAdv(object):
             self.best_pred = new_pred
             self.saver.save_checkpoint({
                 'epoch': epoch + 1,
-                'state_dict': self.model.module.state_dict(),
+                'state_dict': self.model.state_dict(),
                 'optimizer': self.optimizer.state_dict(),
                 'best_pred': self.best_pred,
             }, is_best)
 
 
             ### files saving (models and metrics)
-            torch.save(self.model.module.state_dict(), self.save_path + 'Model_best.pth')
-                
+            torch.save(self.model.state_dict(), self.save_path + 'Model_best.pth')
+
             np.save(self.save_path + 'mIoU_best_model.npy', mIoU)
             np.save(self.save_path + 'Acc_best_model', Acc)
             np.save(self.save_path + 'Acc_class_best_model', Acc_class)
             np.save(self.save_path + 'FWIoU_best_model', FWIoU)
-            
+
         ### files saving (models and metrics)
-        torch.save(self.model.module.state_dict(), self.save_path + 'model_' + np.str(epoch) + '.pth')
-            
+        torch.save(self.model.state_dict(), self.save_path + 'model_' + np.str(epoch) + '.pth')
+
         np.save(self.save_path + 'mIoU_' + np.str(epoch) + '.npy', mIoU)
         np.save(self.save_path + 'Acc_' + np.str(epoch) + '.npy', Acc)
         np.save(self.save_path + 'Acc_class_'  + np.str(epoch) + '.npy', Acc_class)
@@ -334,26 +336,26 @@ if __name__ == "__main__":
     parser.add_argument('--list-folder', type=str, default='list_folder1')
 
     args = parser.parse_args()
-    
+
     ### args inputs
     args.lr = 0.00006 # suggested by the SegFormer
-    args.workers = 2
+    args.workers = 4
     args.epochs = 300 # 300 by default
     args.batch_size = 12
     args.batch_size_val = 20
-    args.gpu_ids = "0" 
+    args.gpu_ids = "0"
     args.backbone = "mit_b2" #
     args.checkname = "new"
     args.eval_interval = 1
     args.loss_type = "ce"
     args.dataset = "kitti_advanced"
     args.propagation = 0 # int value
-    args.sync_bn = False # give True when applying multiple GPUs 
+    args.sync_bn = False # give True when applying multiple GPUs
     args.list_folder = "list_folder1" # split-1: list_folder1; split-2: list_folder2
     args.lr_scheduler = 'cos' # choices=['poly', 'step', 'cos']
     args.use_balanced_weights = True # give weight masks to the objective function
-    
-    
+
+
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     if args.cuda:
         try:
@@ -369,18 +371,18 @@ if __name__ == "__main__":
 
     # default settings for epochs, batch_size and lr
     if args.epochs is None:
-        epoches = {
+        epochs = {
             'coco': 30,
             'cityscapes': 200,
             'pascal': 50,
             'kitti': 50,
             'kitti_advanced': 50
         }
-        args.epochs = epoches[args.dataset.lower()]
+        args.epochs = epochs[args.dataset.lower()]
 
     if args.batch_size is None:
         args.batch_size = 4 * len(args.gpu_ids)
-        
+
     if args.batch_size_val is None:
         args.batch_size_val = 20
 
@@ -405,10 +407,9 @@ if __name__ == "__main__":
 
     trainer = TrainerAdv(args)
     trainer.warm_lr = 0.00006
-    trainer.save_path = 'weights/save_path/' # name a folder to save the model
     print('weight mask:', trainer.weight)
     print('Starting Epoch:', trainer.args.start_epoch)
-    print('Total Epoches:', trainer.args.epochs)
+    print('Total Epochs:', trainer.args.epochs)
     for epoch in range(trainer.args.start_epoch, trainer.args.epochs):
         trainer.training(epoch)
         print('save path:', trainer.save_path)
