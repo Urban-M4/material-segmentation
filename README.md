@@ -1,130 +1,24 @@
-# RGB Road Scene Material Segmentation, ACCV2022
+# RGB Road Scene Material Segmentation for the Urban-M4 project
 
-This repository provides an inplementation of our paper RGB Road Scene Material Segmentation in ACCV2022.
-If you use our code and data please cite our paper.
+This is a repackaged version of the original [RGB Road Scene Material Segmentation](https://github.com/kyotovision-public/RGB-Road-Scene-Material-Segmentation/?tab=readme-ov-file) repository. Please refer to the original [README](https://github.com/kyotovision-public/RGB-Road-Scene-Material-Segmentation/blob/main/README.md) as well.
 
-Please note that this is research software and may contain bugs or other issues – please use it at your own risk. If you experience major problems with it, you may contact us, but please note that we do not have the resources to deal with all issues.
 
-```
-@InProceedings{Cai_2022_ACCV,
-    author    = {Sudong Cai and Ryosuke Wakaki and Shohei Nobuhara and Ko Nishino},
-    title     = {RGB Road Scene Material Segmentation},
-    booktitle = {Proceedings of Asian Conference on Computer Vision (ACCV)},
-    month     = {Dec},
-    year      = {2022}
-}
+# Installation
+The code is in need of refactoring, so some effort has been made to make it easier to install. After cloning the repository, run the following to install the dependencies and the codebase as a local editable package:
+
+```bash
+$> pip install -e .
 ```
 
-The implementation of the encoder Mix-Transformer (MiT) and the corresponding ImageNet pre-trained model are adopted from the original project: [SegFormer](https://github.com/NVlabs/SegFormer).
+# Data
 
-The dataloader, utils, files for training and evaluation are adopted/modified from the related github project: [pytorch-deeplab-xception](https://github.com/jfzhang95/pytorch-deeplab-xception).
+Unpack the archive containing images and pretrained weights into the root directory of the repository:
 
-
-## KITTI-Materials dataset
-
-### License
-
-The KITTI-Materials dataset is provided under the [Creative Commons Attribution 4.0 International License (CC BY 4.0)](http://creativecommons.org/licenses/by/4.0/).
-
-### Download
-
-Our KITTI-Materials dataset is available as `data.zip` at: [Google Drive](https://drive.google.com/drive/u/0/folders/1a5geigz8PKRlOYv-L2ePCfh0FlymW37H).
-Uncompress the zip to extract files into `data/KITTI_Materials/`.
-Please note that the `list_folder1` and `list_folder2` in the dataset folder denote the `split-1` and `split-2` respectively.
-
-## Pretrained models
-
-The pretrained rmsnet weights for KITTI-Materials can be found as `rmsnet_split1.pth` and `rmsnet_split2.pth` at: [Google Drive](https://drive.google.com/drive/u/0/folders/1a5geigz8PKRlOYv-L2ePCfh0FlymW37H). 
-
-The ImageNet pre-trained weight for MiT-B2 encoder `mit_b2.pth` can be found at: [mit_b2](https://drive.google.com/file/d/1m8fsG812o6KotF1NVo0YuiSfSn18TAOA/view?usp=sharing) .
-
-## How to use the code
-
-### Requirements
-
-We tested our code with Python 3.8 on Ubuntu 18.04 LTS using the following packages.
-Other recent versions may also be okay in general, but not sure.
-You can also use [`env.def`](env.def) to create a singularity container with these packages.
-
-* pytorch==1.11.0
-* torchvision==0.12.0
-* opencv_contrib_python==4.5.2.54
-* tqdm==4.62.3
-* einops==0.5.0
-* timm==0.6.11
-* matplotlib==3.6.2
-* tensorboardx==2.5.1
-* pillow==9.0.1
-
-
-Put the dataset and pretrained weights as follows.
-
-1. Uncompress 'KITTI_Materials' dataset into `data/` (i.e., the data path is expected to be `data/KITTI_Materials/`).
-2. Put the pretrained weight `mit_b2.pth` into `weights/init/`.
-3. Put the pretrained weights for our RMSNet into `weights/rmsnet/` (only for evaluation, unnecessary if training from scratch).
-
-As a result, you should have the following directory structure.
-
-```
-.
-├── LICENSE
-├── README.md
-├── data
-│   └── KITTI_Materials
-│       ├── kitti_advanced_classes_weights.npy
-│       ├── list_folder1/
-│       ├── list_folder2/
-│       └── train/
-├── test.py
-├── train.py
-└── weights
-    ├── init
-    │   └── mit_b2.pth
-    ├── rmsnet
-    │   ├── rmsnet_split1.pth
-    │   └── rmsnet_split2.pth
-    └── save_path/
+```bash
+$> tar -xvzf data.tar.gz
 ```
 
-### Test with pretrained weights
+# Notebooks
 
-Run `test.py` with trained weights.  It should output
-```
-Validation:
-[Epoch: 0, numImages:   200]
-Acc:0.8500841899671052, Acc_class:0.6338839179588864, mIoU:0.46823551505456135, fwIoU: 0.7583153107992938
-Loss: 120.971
-```
-
-### Train from scrath
-
-Run `train.py` to train RMSNet from scratch.  It requires a GPU with 40GB or more RAM. The output should be as follows (the mIoU may fluctuate by around 1%).
-```
-=>Epoches 298, learning rate = 0.0000,                 previous best = 0.4667
-Train loss: 0.149: 100%|███████████████████████████████████████████████████████████████████████████| 66/66 [01:41<00:00,  1.54s/it]
-[Epoch: 298, numImages:   792]
-Loss: 9.852
-save path: weights/save_path/
-use the ImageNet pre-trained model
-Test loss: 1.065: 100%|████████████████████████████████████████████████████████████████████████████| 10/10 [00:14<00:00,  1.43s/it]
-Validation:
-[Epoch: 298, numImages:   200]
-Acc:0.84499755859375, Acc_class:0.6205695550166175, mIoU:0.45809623406927835, fwIoU: 0.7553211684835024
-Loss: 10.653
-Number of images in train: 800
-Number of images in val: 200
-  0%|                                                                                                       | 0/66 [00:00<?, ?it/s]
-=>Epoches 299, learning rate = 0.0000,                 previous best = 0.4667
-Train loss: 0.145: 100%|███████████████████████████████████████████████████████████████████████████| 66/66 [01:41<00:00,  1.54s/it]
-[Epoch: 299, numImages:   792]
-Loss: 9.592
-save path: weights/save_path/
-use the ImageNet pre-trained model
-Test loss: 1.083: 100%|████████████████████████████████████████████████████████████████████████████| 10/10 [00:18<00:00,  1.82s/it]
-Validation:
-[Epoch: 299, numImages:   200]
-Acc:0.8449763826069079, Acc_class:0.6195685580715145, mIoU:0.45762377309155483, fwIoU: 0.7553741009645986
-Loss: 10.831
-```
-
-Note that, if you want to train with your customized settings, please directly change the corresponding hyperparameters (e.g., learning rate, epochs, Sync BN, and etc.) in the `train.py`, instead of using argparse from outside.
+- [segmentation.ipynb](./notebooks/segmentation.ipynb): an example of a generic segmentation pipeline using a pretrained SegFormer model from Huggingface. It does not identify materials, only objects of the same class.
+- [inference.ipynb](./notebooks/inference.ipynb) contains an example of running the RMSNet pipeline. It should output material classes.
